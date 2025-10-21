@@ -41,14 +41,13 @@ bool Camera::open(std::string filename)
 		m_fps = 30;
 	return true;
 }
-bool Camera::generate_road_contours(int display_construction){
+
+bool Camera::generate_road_contours(){
 	    
 	if (!m_cap.isOpened()) {
         std::cerr << "Camera not opened!" << std::endl;
         return false;
     }
-	
-	namedWindow("Video", cv::WINDOW_AUTOSIZE);
 	m_cap.read(m_frame);
 	m_cap.read(m_frame);
 	m_cap.read(m_frame);
@@ -63,20 +62,20 @@ bool Camera::generate_road_contours(int display_construction){
 	vector<Mat> hsvChannels;
 	split(hsv, hsvChannels);
 	Mat S = hsvChannels[1];
-	if(display_construction)imshow("Saturation",S);	
+	if(display_step_highway)imshow("Saturation",S);	
 
 	Mat grayMask;
 
 	// 2. On garde l'image lorsque la saturation est inférieur à satmax
 	int satmax = 50 ;
 	threshold(S, grayMask, satmax, 255 , THRESH_BINARY_INV);
-	if(display_construction)imshow("Saturation x < 50 ",grayMask);	
+	if(display_step_highway)imshow("Saturation x < 50 ",grayMask);	
 	
 	// 3. Close + Ouverture avec un rectangle 15 x 15
 	Mat kernel = getStructuringElement(MORPH_RECT, Size(15,15));
 	morphologyEx(grayMask, grayMask, MORPH_CLOSE, kernel);
 	morphologyEx(grayMask, grayMask, MORPH_OPEN, kernel);
-	if(display_construction)imshow("Close +> Open with 15x15 rect",grayMask);	
+	if(display_step_highway)imshow("Close +> Open with 15x15 rect",grayMask);	
 
 	vector<vector<Point>> contours;
 	// 4. Trouve les contours
@@ -96,14 +95,14 @@ bool Camera::generate_road_contours(int display_construction){
 	for (auto& c : road_contours) {
 		drawContours(maskColor, vector<vector<Point>>{c}, -1, Scalar(0,0,255), 3); // rouge
 	}
-	if(display_construction)imshow("Only contours > 10k pixels",maskColor);	
+	if(display_step_highway)imshow("Only contours > 10k pixels",maskColor);	
 
 	// 7. On trace leur contours
 	road_contour_frame = m_frame.clone();
 	for (auto& c : road_contours) {
 		drawContours(road_contour_frame, vector<vector<Point>>{c}, -1, Scalar(0,0,255), 3); // vert, épaisseur 3
 	}
-	if(display_construction)imshow("Contours Traced", road_contour_frame);
+	if(display_step_highway)imshow("Contours Traced", road_contour_frame);
 	return true;
 }
 
@@ -114,30 +113,30 @@ int Camera::generate_car_box(float alpha, Mat* last_ref, Mat* ref){
 	// Image de référence
 	(*ref) = alpha * m_frame + (1.0f - alpha) * (*last_ref);
 	(*last_ref) = (*ref);
-	imshow("Ref",(*ref));
+	if(display_step_car)imshow("Ref",(*ref));
 	
 	
 	// Construction masque de différence
 	// si ( |Image_ref(i) - Image(i|>seuil=>1)
 	Mat abs_diff;
 	abs_diff = abs((*ref)-m_frame);
-	imshow("Image difference",abs_diff);
+	if(display_step_car)imshow("Image difference",abs_diff);
 
 	// Masque de différence en NDG
 	Mat diff_gray;
 	cvtColor(abs_diff, diff_gray, COLOR_BGR2GRAY);
-	imshow("Image difference en NDG",diff_gray);
+	if(display_step_car)imshow("Image difference en NDG",diff_gray);
 	
 	// Masque de différence en binaire (threshold)
 	Mat diff_bin;
 	threshold(diff_gray, diff_bin, 5, 255, THRESH_BINARY);
-	imshow("Binaire image diff",diff_bin);
+	if(display_step_car)imshow("Binaire image diff",diff_bin);
 
 	// On supprime les tous petits bouts
 	Mat kernel = getStructuringElement(MORPH_ELLIPSE, Size(15,15));
 	morphologyEx(diff_bin, diff_bin, MORPH_CLOSE, kernel);
 	morphologyEx(diff_bin, diff_bin, MORPH_OPEN, kernel);
-	imshow("Apres fermeture ouverture", diff_bin);
+	if(display_step_car)imshow("Apres fermeture ouverture", diff_bin);
 
 	findContours(diff_bin, car_contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
@@ -148,7 +147,7 @@ int Camera::generate_car_box(float alpha, Mat* last_ref, Mat* ref){
 void Camera::play()
 {
 	// Create main window
-	namedWindow("Video", cv::WINDOW_AUTOSIZE);
+	//namedWindow("Video", cv::WINDOW_AUTOSIZE);
 	bool isReading = true;
 	// Compute time to wait to obtain wanted framerate
 	int timeToWait = 1000/m_fps;
@@ -171,7 +170,6 @@ void Camera::play()
 				drawContours(video_with_contours, vector<vector<Point>>{c}, -1, Scalar(0,0,255), 3); // rouge, épaisseur 3
 			}
 			//imshow("Video with highway detection",video_with_contours);
-			
 
 			/// --------------------------------
 
@@ -181,8 +179,6 @@ void Camera::play()
 				rectangle(m_frame, box, Scalar(0, 255, 0), 2); // vert, épaisseur 2 
 			}
 			imshow("Video with car detection",m_frame);
-
-
 			
 		}
 		else
@@ -198,14 +194,6 @@ void Camera::play()
 		}	
 	}	
 }
-
-
-
-
-
-
-
-
 
 bool Camera::close()
 {

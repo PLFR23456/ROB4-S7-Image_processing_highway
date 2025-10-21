@@ -6,8 +6,10 @@ int main(void)
 		
 	myCam.open("cctv.avi");
 
-	bool display_construction = false; // 'true' to show the contours construction // 'false' to skip
-	myCam.generate_road_contours(display_construction);
+	myCam.display_step_highway = false; // 'true' to show the contours construction // 'false' to skip
+	myCam.display_step_car = true;
+
+	myCam.generate_road_contours();
 
 	myCam.play();
 	
