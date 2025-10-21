@@ -107,19 +107,20 @@ bool Camera::generate_road_contours(int display_construction){
 	return true;
 }
 
-int Camera::generate_car_box(){
+int Camera::generate_car_box(float alpha, Mat* last_ref, Mat* ref){
 	// Generate box around the cars
-			
+		
+
 	// Image de référence
-	ref = alpha * m_frame + (1.0f - alpha) * last_ref;
-	last_ref = ref;
-	imshow("Ref",ref);
+	(*ref) = alpha * m_frame + (1.0f - alpha) * (*last_ref);
+	(*last_ref) = (*ref);
+	imshow("Ref",(*ref));
 	
 	
 	// Construction masque de différence
 	// si ( |Image_ref(i) - Image(i|>seuil=>1)
 	Mat abs_diff;
-	abs_diff = abs(ref-m_frame);
+	abs_diff = abs((*ref)-m_frame);
 	imshow("Image difference",abs_diff);
 
 	// Masque de différence en NDG
@@ -138,9 +139,9 @@ int Camera::generate_car_box(){
 	morphologyEx(diff_bin, diff_bin, MORPH_OPEN, kernel);
 	imshow("Apres fermeture ouverture", diff_bin);
 
-	vector<vector<Point>> contours;
-	findContours(diff_bin, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-			
+	findContours(diff_bin, car_contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+	return 0;
 }
 
 
@@ -151,9 +152,9 @@ void Camera::play()
 	bool isReading = true;
 	// Compute time to wait to obtain wanted framerate
 	int timeToWait = 1000/m_fps;
-	float alpha = 0.65f;  // vitesse de mise à jour
 	Mat last_ref = m_frame.clone();
 	Mat ref = Mat::zeros(m_frame.size(), m_frame.type());
+	float alpha = 0.65f;  // vitesse de mise à jour
 	while(isReading)
 	{
 		// Get frame from stream
@@ -162,26 +163,24 @@ void Camera::play()
 		if(isReading)
 		{
 			// Show frame in main window
-			//imshow("Video",video_with_contours);	
+			//imshow("Video",m_frame);	
 
 			// Show frame with contours, in main window
 			Mat video_with_contours = m_frame.clone();
 			for (auto& c : road_contours) {
 				drawContours(video_with_contours, vector<vector<Point>>{c}, -1, Scalar(0,0,255), 3); // rouge, épaisseur 3
 			}
-			imshow("Video",video_with_contours);
+			//imshow("Video with highway detection",video_with_contours);
 			
 
 			/// --------------------------------
 
-			for (auto &c : contours)
-			{
-				Rect box = boundingRect(c);
-				rectangle(m_frame, box, Scalar(0, 255, 0), 2);  // vert, épaisseur 2
+			generate_car_box(alpha,&last_ref,&ref);
+			for (auto &c : car_contours) {
+				Rect box = boundingRect(c); 
+				rectangle(m_frame, box, Scalar(0, 255, 0), 2); // vert, épaisseur 2 
 			}
-
-			// Afficher le résultat
-			imshow("Voiture detectees", m_frame);
+			imshow("Video with car detection",m_frame);
 
 
 			

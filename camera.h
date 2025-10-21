@@ -1,5 +1,6 @@
 #include <opencv2/opencv.hpp>
-#include <string.h>
+#include <string>
+
 
 using namespace cv;
 using namespace std;
@@ -13,7 +14,7 @@ public:
 	void play();
 	bool close();
 	bool generate_road_contours(int display_construction);
-	int generate_car_box();
+	int generate_car_box(float alpha,Mat* last_ref, Mat* ref);
 	
 private:
 	std::string m_fileName;
